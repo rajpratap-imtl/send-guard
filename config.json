@@ -1,0 +1,21 @@
+﻿{
+    "ember":  {
+                  "model_sha256":  "11C4B047A1514AF92A3E5390811EC4BF9F5571BDC699931ED426032D52940F2C",
+                  "prediction_python":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\ember model training\\xgboost-env\\Scripts\\python.exe",
+                  "directory":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\ember model training\\ember-malware-detector",
+                  "extraction_python":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\ember model training\\ember-source\\.venv\\Scripts\\python.exe"
+              },
+    "ai_image":  {
+                     "base_url":  "http://127.0.0.1:8001",
+                     "wsl_distribution":  "Ubuntu",
+                     "model_sha256":  "1ff3d598dbca903a713c83f8d1bc3c6f65d46c4b3f2aafca7f49a011037a9cee",
+                     "release_directory":  "/home/rajpr/ai-image-detector-release"
+                 },
+    "doctamper":  {
+                      "model_sha256":  "96291B0F3E382AA9DD559E4F274DEE9007EA1AA34EC9B12CA4BF1A775A21D9B2",
+                      "directory":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\DocTamper_ReadyToRun",
+                      "base_url":  "http://127.0.0.1:8002",
+                      "checkpoint":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\DocTamper_ReadyToRun\\results\\improved_model.pth",
+                      "python":  "C:\\Users\\rajpr\\OneDrive\\Desktop\\DocTamper_ReadyToRun\\.venv\\Scripts\\python.exe"
+                  }
+}

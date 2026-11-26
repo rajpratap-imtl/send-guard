@@ -1,0 +1,142 @@
+﻿import json
+import tempfile
+from pathlib import Path
+from threading import BoundedSemaphore
+
+from fastapi import FastAPI, File, UploadFile, HTTPException
+
+from adapters.malware_detector import scan_malware, DetectorError
+
+
+BASE_DIR = Path(__file__).resolve().parent
+
+CONFIG = json.loads(
+    (BASE_DIR / "config.json").read_text(
+        encoding="utf-8-sig"
+    )
+)
+
+MAX_PE_BYTES = 100 * 1024 * 1024
+
+SCAN_SLOT = BoundedSemaphore(1)
+
+app = FastAPI(
+    title="Pre-Send File Risk Detection",
+    description="Multi-model file security and authenticity analysis",
+    version="0.1.0"
+)
+
+
+@app.get("/")
+def home():
+    return {
+        "application": "Pre-Send File Risk Detection",
+        "version": "0.1.0",
+        "status": "running"
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "central_backend"
+    }
+
+
+@app.post("/api/scan/pe")
+def analyze_executable(file: UploadFile = File(...)):
+
+    if not SCAN_SLOT.acquire(blocking=False):
+        raise HTTPException(
+            status_code=503,
+            detail="Scanner is busy. Please try again."
+        )
+
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="presend_"
+        ) as temp_dir:
+
+            path = Path(temp_dir) / "sample.bin"
+            size = 0
+
+            with path.open("wb") as destination:
+                while True:
+                    chunk = file.file.read(1024 * 1024)
+
+                    if not chunk:
+                        break
+
+                    size += len(chunk)
+
+                    if size > MAX_PE_BYTES:
+                        raise HTTPException(
+                            status_code=413,
+                            detail="Maximum PE file size is 100 MiB."
+                        )
+
+                    destination.write(chunk)
+
+            if size == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Empty file."
+                )
+
+            # Preliminary PE format validation
+            with path.open("rb") as handle:
+                header = handle.read(64)
+
+                if len(header) < 64 or header[:2] != b"MZ":
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Unsupported Windows PE file."
+                    )
+
+                offset = int.from_bytes(
+                    header[60:64], "little"
+                )
+
+                if offset < 64 or offset > size - 4:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Invalid PE header."
+                    )
+
+                handle.seek(offset)
+
+                if handle.read(4) != b"PE\x00\x00":
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Invalid PE signature."
+                    )
+
+            try:
+                result = scan_malware(
+                    path,
+                    CONFIG["ember"]
+                )
+
+            except DetectorError as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail=str(exc)
+                ) from exc
+
+            result["file_name"] = Path(
+                file.filename or "uploaded_file"
+            ).name
+
+            return result
+
+    finally:
+        SCAN_SLOT.release()
+
+from image_routes import router as image_router
+
+app.include_router(image_router)
+
+from document_routes import router as document_router
+
+app.include_router(document_router)
